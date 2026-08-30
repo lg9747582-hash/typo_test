@@ -1,0 +1,801 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tapo — Testeur de vitesse de frappe</title>
+<meta name="description" content="Teste ta vitesse de frappe en français. Mots par minute, précision, classement et progression en temps réel.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Special+Elite&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #17140F;
+    --bg-soft: #1F1B14;
+    --paper: #EFE7D8;
+    --paper-shadow: #D8CDB6;
+    --ink: #211D17;
+    --ribbon: #B8452F;
+    --ribbon-dim: #7C3323;
+    --stamp-green: #4F6F52;
+    --stamp-red: #A8483A;
+    --muted: #8C8370;
+    --muted-2: #4A453A;
+    --gold: #C79A4B;
+    --text: var(--paper);
+  }
+
+  html[data-theme="light"] {
+    --bg: #F3ECDD;
+    --bg-soft: #E8DFC9;
+    --paper: #FBF7EE;
+    --paper-shadow: #D8CDB6;
+    --ink: #211D17;
+    --ribbon: #B8452F;
+    --ribbon-dim: #954330;
+    --stamp-green: #3E6B47;
+    --stamp-red: #A8483A;
+    --muted: #7A7261;
+    --muted-2: #C9BDA0;
+    --gold: #9C6B22;
+    --text: #211D17;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: radial-gradient(ellipse at top, var(--bg-soft) 0%, var(--bg) 60%);
+    color: var(--text);
+    font-family: 'JetBrains Mono', monospace;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 32px 16px 64px;
+    transition: background 0.2s, color 0.2s;
+  }
+
+  .top-bar {
+    width: min(720px, 100%);
+    display: flex;
+    justify-content: flex-end;
+    margin-bottom: 8px;
+  }
+
+  .theme-toggle {
+    background: transparent;
+    border: 1px solid var(--muted-2);
+    color: var(--text);
+    padding: 6px 12px;
+    border-radius: 3px;
+    cursor: pointer;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+  }
+
+  .eyebrow {
+    font-family: 'Special Elite', cursive;
+    letter-spacing: 0.35em;
+    text-transform: uppercase;
+    font-size: 13px;
+    color: var(--gold);
+    margin-bottom: 6px;
+  }
+
+  h1 {
+    font-family: 'Special Elite', cursive;
+    font-size: clamp(28px, 5vw, 44px);
+    margin: 0 0 6px;
+    color: var(--text);
+    letter-spacing: 0.02em;
+  }
+
+  .tagline {
+    color: var(--muted);
+    font-size: 13px;
+    margin-bottom: 20px;
+    text-align: center;
+  }
+
+  /* --- Duration selector --- */
+  .duration-bar {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 24px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  .duration-btn {
+    background: transparent;
+    border: 1px solid var(--muted-2);
+    color: var(--muted);
+    padding: 6px 14px;
+    border-radius: 3px;
+    cursor: pointer;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    letter-spacing: 0.05em;
+  }
+
+  .duration-btn.active {
+    border-color: var(--gold);
+    color: var(--gold);
+  }
+
+  /* --- Odometer-style counters (signature element) --- */
+  .dashboard {
+    display: flex;
+    gap: 28px;
+    margin-bottom: 28px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  .gauge {
+    background: var(--bg-soft);
+    border: 1px solid var(--muted-2);
+    border-radius: 4px;
+    padding: 10px 18px;
+    text-align: center;
+    min-width: 110px;
+  }
+
+  .gauge-label {
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 6px;
+  }
+
+  .odometer {
+    display: flex;
+    justify-content: center;
+    gap: 2px;
+  }
+
+  .odometer .digit {
+    background: var(--ink);
+    color: var(--gold);
+    font-weight: 700;
+    font-size: 26px;
+    width: 22px;
+    text-align: center;
+    border-radius: 2px;
+    box-shadow: inset 0 2px 4px rgba(0,0,0,0.5);
+    transition: color 0.15s;
+  }
+
+  .gauge.accuracy .odometer .digit { color: var(--stamp-green); }
+  .gauge.time .odometer .digit { color: var(--ribbon); }
+
+  /* --- Paper card with text to type --- */
+  .paper-wrap {
+    position: relative;
+    width: min(720px, 100%);
+  }
+
+  .paper {
+    background: var(--paper);
+    color: var(--ink);
+    border-radius: 2px;
+    padding: 36px 32px;
+    box-shadow: 0 1px 0 var(--paper-shadow), 0 12px 30px rgba(0,0,0,0.45);
+    font-size: 20px;
+    line-height: 1.9;
+    letter-spacing: 0.01em;
+    min-height: 160px;
+    position: relative;
+  }
+
+  .paper::before {
+    content: "";
+    position: absolute;
+    top: 0; left: 24px;
+    width: 1px;
+    height: 100%;
+    background: var(--ribbon);
+    opacity: 0.15;
+  }
+
+  .char { position: relative; }
+  .char.correct { color: var(--stamp-green); }
+  .char.incorrect { color: var(--stamp-red); text-decoration: underline wavy var(--stamp-red); }
+  .char.current { background: var(--ribbon); color: var(--paper); border-radius: 1px; }
+  .char.pending { color: var(--muted-2); }
+
+  #typing-input {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  /* --- Carriage progress bar (signature element) --- */
+  .carriage-track {
+    position: relative;
+    height: 26px;
+    margin-top: 18px;
+    background: var(--bg-soft);
+    border: 1px solid var(--muted-2);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+
+  .carriage-fill {
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg, var(--ribbon-dim), var(--ribbon));
+    transition: width 0.12s linear;
+  }
+
+  .carriage-bell {
+    position: absolute;
+    top: 50%;
+    right: 8px;
+    transform: translateY(-50%);
+    font-size: 14px;
+    opacity: 0.4;
+  }
+
+  .carriage-bell.ding { opacity: 1; animation: ding 0.4s ease; }
+
+  @keyframes ding {
+    0% { transform: translateY(-50%) rotate(0deg); }
+    25% { transform: translateY(-50%) rotate(-15deg); }
+    50% { transform: translateY(-50%) rotate(15deg); }
+    100% { transform: translateY(-50%) rotate(0deg); }
+  }
+
+  .actions {
+    display: flex;
+    justify-content: center;
+    gap: 12px;
+    margin-top: 20px;
+    flex-wrap: wrap;
+  }
+
+  button.action-btn {
+    font-family: 'JetBrains Mono', monospace;
+    background: transparent;
+    border: 1px solid var(--muted-2);
+    color: var(--text);
+    padding: 10px 20px;
+    border-radius: 3px;
+    cursor: pointer;
+    font-size: 13px;
+    letter-spacing: 0.05em;
+    transition: border-color 0.15s, color 0.15s;
+  }
+
+  button.action-btn:hover, button.action-btn:focus-visible {
+    border-color: var(--gold);
+    color: var(--gold);
+    outline: none;
+  }
+
+  /* --- Results overlay --- */
+  .results {
+    display: none;
+    text-align: center;
+    margin-top: 24px;
+    padding: 24px;
+    background: var(--bg-soft);
+    border: 1px solid var(--muted-2);
+    border-radius: 4px;
+    width: min(720px, 100%);
+  }
+
+  .results.show { display: block; }
+
+  .results h2 {
+    font-family: 'Special Elite', cursive;
+    color: var(--gold);
+    margin-top: 0;
+  }
+
+  .results .big-stat {
+    font-size: 42px;
+    font-weight: 700;
+    color: var(--text);
+  }
+
+  .results .big-stat span {
+    font-size: 16px;
+    color: var(--muted);
+    font-weight: 400;
+    margin-left: 6px;
+  }
+
+  #speed-chart {
+    width: 100%;
+    height: 120px;
+    margin-top: 16px;
+    display: block;
+  }
+
+  .save-score {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+    margin-top: 16px;
+    flex-wrap: wrap;
+  }
+
+  .save-score input {
+    font-family: 'JetBrains Mono', monospace;
+    background: var(--bg);
+    border: 1px solid var(--muted-2);
+    color: var(--text);
+    padding: 8px 10px;
+    border-radius: 3px;
+    font-size: 13px;
+    width: 160px;
+  }
+
+  /* --- Leaderboard --- */
+  .leaderboard {
+    width: min(720px, 100%);
+    margin-top: 24px;
+    background: var(--bg-soft);
+    border: 1px solid var(--muted-2);
+    border-radius: 4px;
+    padding: 18px 22px;
+  }
+
+  .leaderboard h3 {
+    font-family: 'Special Elite', cursive;
+    color: var(--gold);
+    margin: 0 0 10px;
+    font-size: 16px;
+  }
+
+  .leaderboard-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 13px;
+    padding: 6px 0;
+    border-bottom: 1px solid var(--muted-2);
+    color: var(--text);
+  }
+
+  .leaderboard-row:last-child { border-bottom: none; }
+  .leaderboard-row .rank { color: var(--muted); width: 24px; }
+  .leaderboard-empty { color: var(--muted); font-size: 13px; }
+
+  /* --- Ad slot --- */
+  .ad-slot {
+    width: min(720px, 100%);
+    min-height: 90px;
+    margin-top: 32px;
+    border: 1px dashed var(--muted-2);
+    border-radius: 3px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--muted-2);
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+
+  footer {
+    margin-top: 40px;
+    color: var(--muted-2);
+    font-size: 11px;
+    text-align: center;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .carriage-bell.ding { animation: none; }
+    .carriage-fill { transition: none; }
+  }
+</style>
+</head>
+<body>
+
+  <div class="top-bar">
+    <button class="theme-toggle" id="theme-toggle">☀ Clair</button>
+  </div>
+
+  <div class="eyebrow">Machine à écrire numérique</div>
+  <h1>Tapo</h1>
+  <p class="tagline">Teste ta vitesse de frappe. Choisis une durée, puis appuie sur une touche pour démarrer.</p>
+
+  <div class="duration-bar" id="duration-bar">
+    <button class="duration-btn" data-duration="15">15s</button>
+    <button class="duration-btn active" data-duration="30">30s</button>
+    <button class="duration-btn" data-duration="60">60s</button>
+    <button class="duration-btn" data-duration="120">120s</button>
+    <button class="duration-btn" data-duration="0">Libre</button>
+  </div>
+
+  <div class="dashboard">
+    <div class="gauge wpm">
+      <div class="gauge-label">Mots / min</div>
+      <div class="odometer" id="wpm-odometer">
+        <div class="digit">0</div><div class="digit">0</div><div class="digit">0</div>
+      </div>
+    </div>
+    <div class="gauge accuracy">
+      <div class="gauge-label">Précision</div>
+      <div class="odometer" id="acc-odometer">
+        <div class="digit">1</div><div class="digit">0</div><div class="digit">0</div>
+      </div>
+    </div>
+    <div class="gauge time">
+      <div class="gauge-label" id="time-label">Secondes</div>
+      <div class="odometer" id="time-odometer">
+        <div class="digit">0</div><div class="digit">3</div><div class="digit">0</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="paper-wrap">
+    <div class="paper" id="paper" tabindex="0"></div>
+    <input type="text" id="typing-input" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+    <div class="carriage-track">
+      <div class="carriage-fill" id="carriage-fill"></div>
+      <div class="carriage-bell" id="carriage-bell">🔔</div>
+    </div>
+  </div>
+
+  <div class="actions">
+    <button class="action-btn" id="restart-btn">↺ Nouveau texte</button>
+    <button class="action-btn" id="stop-btn" style="display:none;">■ Terminer (mode libre)</button>
+  </div>
+
+  <div class="results" id="results">
+    <h2>Résultat</h2>
+    <div class="big-stat" id="result-wpm">0<span>mots/min</span></div>
+    <p id="result-detail" style="color: var(--muted); font-size: 13px;"></p>
+    <canvas id="speed-chart"></canvas>
+    <div class="save-score">
+      <input type="text" id="player-name" placeholder="Ton pseudo" maxlength="16">
+      <button class="action-btn" id="save-score-btn">Enregistrer le score</button>
+    </div>
+  </div>
+
+  <div class="leaderboard">
+    <h3>🏆 Meilleurs scores (sur cet appareil)</h3>
+    <div id="leaderboard-list"><p class="leaderboard-empty">Aucun score enregistré pour l'instant.</p></div>
+  </div>
+
+  <div class="ad-slot">Emplacement publicitaire (AdSense)</div>
+
+  <footer>Tapo — testeur de vitesse de frappe · fait avec Claude</footer>
+
+<script>
+(function () {
+  const texts = [
+    "Le clavier mécanique claque sous les doigts pendant que les mots prennent forme à toute vitesse.",
+    "Rome ne s'est pas faite en un jour, mais cette phrase peut se taper en quelques secondes seulement.",
+    "La vitesse de frappe s'améliore avec la pratique régulière et une bonne position des mains.",
+    "Un texte simple, sans fioriture, permet de se concentrer uniquement sur la précision des touches.",
+    "Chaque erreur ralentit la cadence, mieux vaut taper juste que taper vite au début.",
+    "La machine à écrire a disparu des bureaux, mais son rythme reste gravé dans nos claviers.",
+    "Apprendre à taper sans regarder ses doigts change complètement la vitesse de frappe au quotidien.",
+    "Le silence d'une pièce est parfois brisé uniquement par le cliquetis régulier des touches.",
+    "La régularité compte plus que la précipitation quand on apprend à taper sur un clavier.",
+    "Un bon testeur de frappe mesure autant la précision que la vitesse pure de la saisie."
+  ];
+
+  const paperEl = document.getElementById('paper');
+  const inputEl = document.getElementById('typing-input');
+  const wpmOdometer = document.getElementById('wpm-odometer');
+  const accOdometer = document.getElementById('acc-odometer');
+  const timeOdometer = document.getElementById('time-odometer');
+  const timeLabel = document.getElementById('time-label');
+  const carriageFill = document.getElementById('carriage-fill');
+  const carriageBell = document.getElementById('carriage-bell');
+  const restartBtn = document.getElementById('restart-btn');
+  const stopBtn = document.getElementById('stop-btn');
+  const resultsEl = document.getElementById('results');
+  const resultWpmEl = document.getElementById('result-wpm');
+  const resultDetailEl = document.getElementById('result-detail');
+  const durationBar = document.getElementById('duration-bar');
+  const themeToggle = document.getElementById('theme-toggle');
+  const chartCanvas = document.getElementById('speed-chart');
+  const saveScoreBtn = document.getElementById('save-score-btn');
+  const playerNameInput = document.getElementById('player-name');
+  const leaderboardList = document.getElementById('leaderboard-list');
+
+  const LB_KEY = 'tapo_leaderboard_v1';
+  const THEME_KEY = 'tapo_theme_v1';
+
+  let DURATION = 30;
+  let freeMode = false;
+  let target = "";
+  let typedCount = 0;
+  let correctCount = 0;
+  let startTime = null;
+  let timerInterval = null;
+  let finished = false;
+  let speedSamples = []; // {t: seconds, wpm}
+
+  function pickText() {
+    return texts[Math.floor(Math.random() * texts.length)];
+  }
+
+  function renderPaper() {
+    paperEl.innerHTML = "";
+    for (let i = 0; i < target.length; i++) {
+      const span = document.createElement('span');
+      span.className = 'char pending';
+      span.textContent = target[i];
+      span.dataset.index = i;
+      paperEl.appendChild(span);
+    }
+    if (paperEl.firstChild) {
+      paperEl.firstChild.classList.remove('pending');
+      paperEl.firstChild.classList.add('current');
+    }
+  }
+
+  function setOdometer(el, value, digits) {
+    const str = String(Math.max(0, Math.min(value, Math.pow(10, digits) - 1))).padStart(digits, '0');
+    [...el.children].forEach((digitEl, i) => { digitEl.textContent = str[i]; });
+  }
+
+  function currentWpm(elapsedSeconds) {
+    const minutes = elapsedSeconds / 60 || (1 / 60);
+    return Math.round((correctCount / 5) / minutes) || 0;
+  }
+
+  function updateStats() {
+    const elapsed = startTime ? (Date.now() - startTime) / 1000 : 0;
+    const wpm = currentWpm(elapsed);
+    const accuracy = typedCount > 0 ? Math.round((correctCount / typedCount) * 100) : 100;
+    setOdometer(wpmOdometer, wpm, 3);
+    setOdometer(accOdometer, accuracy, 3);
+
+    if (freeMode) {
+      setOdometer(timeOdometer, Math.min(999, Math.floor(elapsed)), 3);
+    } else {
+      const remaining = Math.max(0, DURATION - Math.floor(elapsed));
+      setOdometer(timeOdometer, remaining, 3);
+      if (remaining <= 0) finish();
+    }
+
+    if (startTime) {
+      const sec = Math.floor(elapsed);
+      if (!speedSamples.length || speedSamples[speedSamples.length - 1].t !== sec) {
+        speedSamples.push({ t: sec, wpm });
+      }
+    }
+    return { wpm, accuracy };
+  }
+
+  function updateCarriage(position) {
+    if (freeMode) {
+      // in free mode, carriage loops as a pulse rather than fixed target
+      const pct = target.length ? Math.min(100, (position / target.length) * 100) : 0;
+      carriageFill.style.width = pct + '%';
+    } else {
+      const pct = Math.min(100, (position / target.length) * 100);
+      carriageFill.style.width = pct + '%';
+    }
+  }
+
+  function drawChart() {
+    const ctx = chartCanvas.getContext('2d');
+    const dpr = window.devicePixelRatio || 1;
+    const w = chartCanvas.clientWidth || 400;
+    const h = 120;
+    chartCanvas.width = w * dpr;
+    chartCanvas.height = h * dpr;
+    ctx.scale(dpr, dpr);
+    ctx.clearRect(0, 0, w, h);
+
+    const styles = getComputedStyle(document.documentElement);
+    const gridColor = styles.getPropertyValue('--muted-2').trim();
+    const lineColor = styles.getPropertyValue('--ribbon').trim();
+    const textColor = styles.getPropertyValue('--muted').trim();
+
+    if (speedSamples.length < 2) {
+      ctx.fillStyle = textColor;
+      ctx.font = '12px JetBrains Mono, monospace';
+      ctx.fillText('Pas assez de données pour un graphique.', 8, h / 2);
+      return;
+    }
+
+    const maxWpm = Math.max(10, ...speedSamples.map(s => s.wpm));
+    const maxT = speedSamples[speedSamples.length - 1].t || 1;
+    const pad = 20;
+
+    ctx.strokeStyle = gridColor;
+    ctx.lineWidth = 1;
+    for (let i = 0; i <= 4; i++) {
+      const y = pad + ((h - pad * 1.5) * i) / 4;
+      ctx.beginPath();
+      ctx.moveTo(pad, y);
+      ctx.lineTo(w - 8, y);
+      ctx.stroke();
+    }
+
+    ctx.strokeStyle = lineColor;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    speedSamples.forEach((s, i) => {
+      const x = pad + ((w - pad - 8) * s.t) / maxT;
+      const y = (h - pad * 1.5) - ((h - pad * 1.5) * s.wpm) / maxWpm + pad * 0.25;
+      if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+    });
+    ctx.stroke();
+
+    ctx.fillStyle = textColor;
+    ctx.font = '10px JetBrains Mono, monospace';
+    ctx.fillText(maxWpm + ' mpm', 4, 12);
+    ctx.fillText('0', 4, h - 4);
+  }
+
+  function loadLeaderboard() {
+    try {
+      return JSON.parse(localStorage.getItem(LB_KEY) || '[]');
+    } catch (e) { return []; }
+  }
+
+  function saveLeaderboard(entries) {
+    try { localStorage.setItem(LB_KEY, JSON.stringify(entries)); } catch (e) {}
+  }
+
+  function renderLeaderboard() {
+    const entries = loadLeaderboard().sort((a, b) => b.wpm - a.wpm).slice(0, 8);
+    if (!entries.length) {
+      leaderboardList.innerHTML = '<p class="leaderboard-empty">Aucun score enregistré pour l\'instant.</p>';
+      return;
+    }
+    leaderboardList.innerHTML = entries.map((e, i) => `
+      <div class="leaderboard-row">
+        <span class="rank">#${i + 1}</span>
+        <span>${escapeHtml(e.name)}</span>
+        <span>${e.wpm} mpm</span>
+        <span style="color: var(--muted)">${e.accuracy}%</span>
+        <span style="color: var(--muted)">${e.mode}</span>
+      </div>
+    `).join('');
+  }
+
+  function escapeHtml(str) {
+    const div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
+  }
+
+  function finish() {
+    if (finished) return;
+    finished = true;
+    clearInterval(timerInterval);
+    const { wpm, accuracy } = updateStats();
+    resultWpmEl.innerHTML = wpm + '<span>mots/min</span>';
+    resultDetailEl.textContent = `Précision : ${accuracy}% · ${correctCount} caractères corrects sur ${typedCount} frappés`;
+    resultsEl.classList.add('show');
+    resultsEl.dataset.wpm = wpm;
+    resultsEl.dataset.accuracy = accuracy;
+    inputEl.blur();
+    stopBtn.style.display = 'none';
+    drawChart();
+  }
+
+  function setDuration(d) {
+    DURATION = d;
+    freeMode = d === 0;
+    [...durationBar.children].forEach(btn => {
+      btn.classList.toggle('active', Number(btn.dataset.duration) === d);
+    });
+    timeLabel.textContent = freeMode ? 'Écoulé' : 'Secondes';
+    reset();
+  }
+
+  function start() {
+    if (startTime) return;
+    startTime = Date.now();
+    speedSamples = [{ t: 0, wpm: 0 }];
+    if (freeMode) stopBtn.style.display = 'inline-block';
+    timerInterval = setInterval(updateStats, 200);
+  }
+
+  function reset() {
+    clearInterval(timerInterval);
+    target = pickText();
+    typedCount = 0;
+    correctCount = 0;
+    startTime = null;
+    finished = false;
+    speedSamples = [];
+    inputEl.value = "";
+    resultsEl.classList.remove('show');
+    stopBtn.style.display = 'none';
+    setOdometer(wpmOdometer, 0, 3);
+    setOdometer(accOdometer, 100, 3);
+    setOdometer(timeOdometer, freeMode ? 0 : DURATION, 3);
+    updateCarriage(0);
+    renderPaper();
+    inputEl.focus();
+  }
+
+  inputEl.addEventListener('input', () => {
+    if (finished) return;
+    start();
+    const value = inputEl.value;
+    typedCount = value.length;
+    correctCount = 0;
+
+    const chars = paperEl.children;
+    for (let i = 0; i < chars.length; i++) {
+      const c = chars[i];
+      c.classList.remove('correct', 'incorrect', 'current', 'pending');
+      if (i < value.length) {
+        if (value[i] === target[i]) { c.classList.add('correct'); correctCount++; }
+        else { c.classList.add('incorrect'); }
+      } else if (i === value.length) {
+        c.classList.add('current');
+      } else {
+        c.classList.add('pending');
+      }
+    }
+
+    updateCarriage(value.length);
+    updateStats();
+
+    if (value.length >= target.length) {
+      carriageBell.classList.add('ding');
+      setTimeout(() => carriageBell.classList.remove('ding'), 400);
+      if (freeMode) {
+        // in free mode, load a new text and keep going instead of stopping
+        target += " " + pickText();
+        renderPaper();
+        // re-mark typed portion as correct/current based on existing value
+        inputEl.dispatchEvent(new Event('input'));
+      } else {
+        finish();
+      }
+    }
+  });
+
+  paperEl.addEventListener('click', () => inputEl.focus());
+  restartBtn.addEventListener('click', reset);
+  stopBtn.addEventListener('click', finish);
+
+  durationBar.addEventListener('click', (e) => {
+    const btn = e.target.closest('.duration-btn');
+    if (!btn) return;
+    setDuration(Number(btn.dataset.duration));
+  });
+
+  saveScoreBtn.addEventListener('click', () => {
+    const name = (playerNameInput.value || 'Anonyme').trim().slice(0, 16);
+    const wpm = Number(resultsEl.dataset.wpm || 0);
+    const accuracy = Number(resultsEl.dataset.accuracy || 0);
+    const mode = freeMode ? 'Libre' : DURATION + 's';
+    const entries = loadLeaderboard();
+    entries.push({ name, wpm, accuracy, mode, date: new Date().toISOString() });
+    saveLeaderboard(entries);
+    renderLeaderboard();
+    playerNameInput.value = "";
+  });
+
+  function applyTheme(theme) {
+    document.documentElement.setAttribute('data-theme', theme);
+    themeToggle.textContent = theme === 'light' ? '🌙 Sombre' : '☀ Clair';
+    try { localStorage.setItem(THEME_KEY, theme); } catch (e) {}
+    if (resultsEl.classList.contains('show')) drawChart();
+  }
+
+  themeToggle.addEventListener('click', () => {
+    const current = document.documentElement.getAttribute('data-theme') === 'light' ? 'light' : 'dark';
+    applyTheme(current === 'light' ? 'dark' : 'light');
+  });
+
+  // Init
+  let savedTheme = 'dark';
+  try { savedTheme = localStorage.getItem(THEME_KEY) || 'dark'; } catch (e) {}
+  applyTheme(savedTheme);
+  renderLeaderboard();
+  reset();
+})();
+</script>
+
+</body>
+</html>
